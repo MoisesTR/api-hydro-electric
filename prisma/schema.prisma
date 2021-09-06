@@ -10,6 +10,13 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum Rol {
+  JEFE
+  ADMINISTRADOR
+  OPERADOR
+  INFORME
+}
+
 model User {
   id        Int       @id @default(autoincrement())
   userName  String    @unique
@@ -17,21 +24,9 @@ model User {
   lastName  String
   password  String    @db.VarChar(25)
   enabled   Boolean   @default(false)
-  roles     Rol[]
+  rol       Rol
   createdAt DateTime  @default(now())
   updatedAt DateTime? @updatedAt
-}
-
-model Rol {
-  id          Int       @id @default(autoincrement())
-  name        String
-  description String?
-  enabled     Boolean
-  user        User      @relation(fields: [userId], references: [id])
-  userId      Int
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime? @updatedAt
-
 }
 
 enum UnitWork {
@@ -118,6 +113,20 @@ model TriggerReason {
   updatedAt   DateTime? @updatedAt
 }
 
+model TriggerStatistics {
+  id                   Int       @id @default(autoincrement())
+  eventNumber          Int       @db.SmallInt
+  eventDate            DateTime
+  triggerHour          DateTime  @db.Time(6)
+  normalizationHourLt  DateTime  @db.Time(6)
+  availabilityHourPhsm DateTime  @db.Time(6)
+  observation          String
+  potency              Float
+  leak                 Float
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime? @updatedAt
+}
+
 model HydraulicMeasumerent {
   id                  Int       @id @default(autoincrement())
   description         String
@@ -128,4 +137,141 @@ model HydraulicMeasumerent {
   reservoirLevelValue Float
   createdAt           DateTime  @default(now())
   updatedAt           DateTime? @updatedAt
+}
+
+model EventType {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+  event       Event[]
+}
+
+model OperationMode {
+  id          Int       @id @default(autoincrement())
+  name        String
+  type        String
+  description String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+}
+
+model TemperatureMeter {
+  id               Int       @id @default(autoincrement())
+  unitWork         UnitWork
+  meterHour        DateTime  @db.Time(6)
+  phaseR           Int       @db.SmallInt
+  phaseS           Int       @db.SmallInt
+  phaseT           Int       @db.SmallInt
+  statorU          Int       @db.SmallInt
+  statorV          Int       @db.SmallInt
+  statorW          Int       @db.SmallInt
+  bearDSRad        Int       @db.SmallInt
+  bearNDSRad       Int       @db.SmallInt
+  bearNDSAx        Int       @db.SmallInt
+  hotAir           Int       @db.SmallInt
+  regulatorOilTank Int       @db.SmallInt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime? @updatedAt
+}
+
+model Report {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  fileName    String
+  dataSource  String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+}
+
+model HydrologicalBalance {
+  id                                 Int            @id @default(autoincrement())
+  energySentWh                       BigInt
+  energySentMwh                      Float
+  energyReceivedWh                   BigInt
+  energyReceivedKwh                  Float
+  initialLevelMsnm                   Float
+  initialVolUtilMiles                Float
+  reservoirFlowContribution          Float
+  reservoirSupplyVolumeMiles         Float
+  ecologicalExtractionReservoir      Float
+  turbinatedExtractionReservoir      Float
+  leakExtractionReservoir            Float
+  ecologicalExtractionReservoirMiles Float
+  turbinatedExtractionReservoirMiles Float
+  leakExtractionReservoirMiles       Float
+  finalLevelMsnm                     Float
+  finalVolumeUtilMiles               Float
+  meterLecture                       MeterLecture[]
+  createdAt                          DateTime       @default(now())
+  updatedAt                          DateTime?      @updatedAt
+}
+
+model MeterLecture {
+  id                    Int                 @id @default(autoincrement())
+  lectureDate           DateTime
+  bruteU1               Int                 @db.SmallInt
+  barU1                 Float
+  bruteU2               Int                 @db.SmallInt
+  barU2                 Float
+  ltSent                Float
+  ltReceived            Float
+  hydrologicalBalance   HydrologicalBalance @relation(fields: [hydrologicalBalanceId], references: [id])
+  hydrologicalBalanceId Int
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime?           @updatedAt
+}
+
+model WorkedHour {
+  id         Int       @id @default(autoincrement())
+  unitWork   UnitWork
+  workedDate DateTime
+  entryHour  DateTime  @db.Time(6)
+  exitHour   DateTime? @db.Time(6)
+  events     Event[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime? @updatedAt
+}
+
+model Event {
+  id          Int        @id
+  workedHour  WorkedHour @relation(fields: [id], references: [id])
+  description String
+  eventType   EventType  @relation(fields: [eventTypeId], references: [id])
+  eventTypeId Int
+  Failure     Failure[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime?  @updatedAt
+}
+
+model FailureTechniqueType {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+  failure     Failure[]
+}
+
+model TypeMeasureCorrective {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+}
+
+model Failure {
+  id                     Int                  @id @default(autoincrement())
+  failureTechniqueType   FailureTechniqueType @relation(fields: [failureTechniqueTypeId], references: [id])
+  failureTechniqueTypeId Int
+  event                  Event                @relation(fields: [id], references: [id])
+  description            String
+  activePotency          Float
+  reactivePotency        Float
+  correctiveMeasure      String
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime?            @updatedAt
 }
